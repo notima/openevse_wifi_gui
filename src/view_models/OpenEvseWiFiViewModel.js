@@ -37,6 +37,7 @@ function OpenEvseWiFiViewModel(baseHost, basePort, baseProtocol)
   self.wifi = new WiFiConfigViewModel(self.baseEndpoint, self.config, self.status, self.scan);
   self.openevse = new OpenEvseViewModel(self.baseEndpoint, self.config, self.status);
   self.zones = new ZonesViewModel(self.baseEndpoint);
+  self.rfid = new RFIDViewModel(self.baseEndpoint);
 
   self.initialised = ko.observable(false);
   self.updating = ko.observable(false);
@@ -76,6 +77,116 @@ function OpenEvseWiFiViewModel(baseHost, basePort, baseProtocol)
       self.advancedMode(true); // Enabling dev mode implicitly enables advanced mode
     }
   });
+
+  // Sleep timer not connected
+  self.sleepTimerNotConnectedEnabled = ko.computed({
+    read: function() {
+      return (self.config.sleep_timer_enabled_flags() & (1 << 0)) == (1 << 0);
+    },
+    write: function(enabled) {
+      if(enabled){
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() | (1 << 0));
+      }else{
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() & ~(1 << 0));
+      }
+    }
+  });
+
+  self.sleepTimerNotConnectedMinutes = ko.computed({
+    read: function(){
+      return Math.floor(self.config.sleep_timer_not_connected() / 60);
+    },
+    write: function(val){
+      self.config.sleep_timer_not_connected(eval(val) * 60 + eval(self.sleepTimerNotConnectedSeconds()));
+    }
+  });
+
+  self.sleepTimerNotConnectedSeconds = ko.computed({
+    read: function(){
+      return self.config.sleep_timer_not_connected() % 60;
+    },
+    write: function(val){
+      self.config.sleep_timer_not_connected(eval(self.sleepTimerNotConnectedMinutes()) * 60 + eval(val));
+    }
+  });
+
+  // Sleep timer connected
+  self.sleepTimerConnectedEnabled = ko.computed({
+    read: function() {
+      return (self.config.sleep_timer_enabled_flags() & (1 << 1)) == (1 << 1);
+    },
+    write: function(enabled) {
+      if(enabled){
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() | (1 << 1));
+      }else{
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() & ~(1 << 1));
+      }
+    }
+  });
+
+  self.sleepTimerConnectedMinutes = ko.computed({
+    read: function(){
+      return Math.floor(self.config.sleep_timer_connected() / 60);
+    },
+    write: function(val){
+      self.config.sleep_timer_connected(eval(val) * 60 + eval(self.sleepTimerConnectedSeconds()));
+    }
+  });
+
+  self.sleepTimerConnectedSeconds = ko.computed({
+    read: function(){
+      return self.config.sleep_timer_connected() % 60;
+    },
+    write: function(val){
+      self.config.sleep_timer_connected(eval(self.sleepTimerConnectedMinutes()) * 60 + eval(val));
+    }
+  });
+
+  // Sleep timer connected
+  self.sleepTimerDisconnectedEnabled = ko.computed({
+    read: function() {
+      return (self.config.sleep_timer_enabled_flags() & (1 << 2)) == (1 << 2);
+    },
+    write: function(enabled) {
+      if(enabled){
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() | (1 << 2));
+      }else{
+        self.config.sleep_timer_enabled_flags(self.config.sleep_timer_enabled_flags() & ~(1 << 2));
+      }
+    }
+  });
+
+  self.sleepTimerDisconnectedMinutes = ko.computed({
+    read: function(){
+      return Math.floor(self.config.sleep_timer_disconnected() / 60);
+    },
+    write: function(val){
+      self.config.sleep_timer_disconnected(eval(val) * 60 + eval(self.sleepTimerDisconnectedSeconds()));
+    }
+  });
+
+  self.sleepTimerDisconnectedSeconds = ko.computed({
+    read: function(){
+      return self.config.sleep_timer_disconnected() % 60;
+    },
+    write: function(val){
+      self.config.sleep_timer_disconnected(eval(self.sleepTimerDisconnectedMinutes()) * 60 + eval(val));
+    }
+  });
+
+  self.waitForRFID = function () {
+    this.rfid.startWaiting();
+    console.log("Waiting for RFID");
+    let checkFunc = function() {
+      self.rfid.poll()
+      if(self.rfid.waiting()){
+        setTimeout(checkFunc, 1000);
+      }else{
+        self.config.update()
+      }
+    }
+    setTimeout(checkFunc, 1000);
+  };
 
   var updateTimer = null;
   var updateTime = 5 * 1000;
@@ -410,6 +521,70 @@ function OpenEvseWiFiViewModel(baseHost, basePort, baseProtocol)
     }
   });
 
+
+
+  // -----------------------------------------------------------------------
+  // Event: Add RFID tag
+  // -----------------------------------------------------------------------
+  self.addRFIDTag = function(tag) {
+    let storage = self.config.rfid_storage();
+    if(!storage || !storage.includes(tag)){
+      let newStorage = storage + (storage == '' ? '':',') + tag
+      self.config.rfid_storage(newStorage);
+    }
+    self.rfid.scanned("");
+    self.rfidGroup.save();
+  }
+
+  // -----------------------------------------------------------------------
+  // Event: Remove RFID tag
+  // -----------------------------------------------------------------------
+  self.removeRFIDTag = function(tag) {
+    if (confirm(`You are about to remove the tag with UID: '${tag}' permanently!`)) {
+      var replace = new RegExp(`${tag},?`,"g");
+      self.config.rfid_storage(self.config.rfid_storage().replaceAll(replace, ""));
+      self.rfid.scanned("");
+      self.rfidGroup.save();
+    }
+  };
+
+  // -----------------------------------------------------------------------
+  // Event: Clear RFID tags
+  // -----------------------------------------------------------------------
+  self.clearRFIDTags = function() {
+    if (confirm(`You are about to remove all stored tags permanently!`)){
+      self.config.rfid_storage("");
+      self.rfidGroup.save();
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Event: RFID save
+  // -----------------------------------------------------------------------
+  self.rfidGroup = new ConfigGroupViewModel(self.baseEndpoint, () => {
+    return {
+      rfid_enabled: self.config.rfid_enabled(),
+      rfid_storage: self.config.rfid_storage()
+    };
+  }).done(() => {
+    setTimeout(self.config.update(), 1000);
+  });
+  self.config.rfid_enabled.subscribe(() => {
+    self.rfidGroup.save();
+  });
+
+  // -----------------------------------------------------------------------
+  // Event: Sleep timer save
+  // -----------------------------------------------------------------------
+  self.sleepTimerGroup = new ConfigGroupViewModel(self.baseEndpoint, () => {
+    return {
+      sleep_timer_enabled_flags: self.config.sleep_timer_enabled_flags(),
+      sleep_timer_not_connected: self.config.sleep_timer_not_connected(),
+      sleep_timer_connected: self.config.sleep_timer_connected(),
+      sleep_timer_disconnected: self.config.sleep_timer_disconnected()
+    }
+  });
+
   // -----------------------------------------------------------------------
   // Event: Emoncms save
   // -----------------------------------------------------------------------
@@ -493,6 +668,7 @@ function OpenEvseWiFiViewModel(baseHost, basePort, baseProtocol)
       divert_enabled: self.config.divert_enabled(),
       mqtt_solar: self.config.mqtt_solar(),
       mqtt_grid_ie: self.config.mqtt_grid_ie(),
+      divert_PV_ratio: self.config.divert_PV_ratio(),
       divert_attack_smoothing_factor: self.config.divert_attack_smoothing_factor(),
       divert_decay_smoothing_factor: self.config.divert_decay_smoothing_factor(),
       divert_min_charge_time: self.config.divert_min_charge_time()

@@ -49,11 +49,18 @@ function ConfigViewModel(baseEndpoint) {
     "version": "0.0.0",
     "time_zone": false,
     "divert_enabled": false,
+    "divert_PV_ratio": 1.0,
     "divert_attack_smoothing_factor": 0.4,
     "divert_decay_smoothing_factor": 0.05,
     "divert_min_charge_time": 600,
     "charge_mode": "full",
-    "pause_uses_disabled": false
+    "pause_uses_disabled": false,
+    "rfid_enabled": 0,
+    "rfid_storage": "",
+    "sleep_timer_enabled_flags": 0,
+    "sleep_timer_not_connected": 0,
+    "sleep_timer_connected": 0,
+    "sleep_timer_disconnected": 0
   }, endpoint);
 
   function trim(prop, val) {

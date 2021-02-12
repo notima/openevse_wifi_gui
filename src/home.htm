@@ -14,6 +14,9 @@
   <link rel="stylesheet" type="text/css" href="style.css">
   <link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32" />
   <link rel="icon" type="image/png" href="favicon-16x16.png" sizes="16x16" />
+  <link rel="apple-touch-icon" href="favicon-180.png" sizes="180x180">
+  <link rel="apple-touch-icon" href="favicon-167.png" sizes="167x167">
+  <link rel="apple-touch-icon" href="favicon-152.png" sizes="152x152">
 
 </head>
 
@@ -183,7 +186,96 @@
             </p>
           </div>
 
+          <div class="box380 right">
+            <h2>RFID</h2>
+            <b>Enabled: </b>
+            <label class="switch">
+              <input type="checkbox" id="rfid_enabled" data-bind="checked: config.rfid_enabled" />
+              <div class="slider round"></div>
+            </label>
+            <br>
+            <div data-bind="visible: config.rfid_storage() != ''">
+              <h3>Registered tags</h3>
+              <div id="stored_tags_list">
+                <ul class="list-group" data-bind="foreach: config.rfid_storage().split(',')">
+                  <li class="list-group-item" data-bind="visible: $data">
+                    <span data-bind="text: $data" style="font-family: 'Courier New', monospace;"></span>
+                    <span style="float: right"><a style="cursor: pointer;" data-bind="click: $parent.removeRFIDTag">Remove</a></span>
+                  </li>
+                </ul>
+              </div>
+              <button data-bind="click: clearRFIDTags">Clear tags</button>
+            </div>
+            <div>
+              <div data-bind="visible: config.rfid_enabled">
+                <h3>Manage scanned tag</h3>
+                <button data-bind="click: waitForRFID, disable: rfid.waiting() > 0">Scan</button>
+                <div data-bind="visible: rfid.waiting() > 0">
+                  <b>Place your RFID tag on the scanner... <span data-bind="text: rfid.timeLeft"></span></b>
+                </div>
+                <div data-bind="visible: rfid.scanned()">
+                  <b>Tag scanned successfully!</b>
+                  <h3>UID: <span data-bind="text: rfid.scanned"></span></h3>
+                  <div>
+                    <button data-bind="click: function(data, event) { addRFIDTag(rfid.scanned()) }">Register tag</button>
+                    <button data-bind="click: function(data, event) { removeRFIDTag(rfid.scanned()) }">Remove tag</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="box380 left">
+            <h2>Pause timer</h2>
+            <p>
+              <b>After waking up:</b> <br>
+              <div data-bind="visible: isEcoModeAvailable">
+                <span data-bind="css: {selected: !sleepTimerNotConnectedEnabled() }">Stay awake</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="checked: sleepTimerNotConnectedEnabled" />
+                  <div class="slider round"></div>
+                </label>
+                <span data-bind="css: {selected: sleepTimerNotConnectedEnabled }">Start timer</span><br/>
+              </div>
+              <input data-bind="enable: sleepTimerNotConnectedEnabled, value: sleepTimerNotConnectedMinutes" type="number" style="width: 6em;" placeholder="minutes" min="0" max="59">
+              :
+              <input data-bind="enable: sleepTimerNotConnectedEnabled, value: sleepTimerNotConnectedSeconds" type="number" style="width: 6em;" placeholder="seconds" min="0" max="59"><br>
+              <span class="small-text validMessage">The time it will take before pausing after the device is started and no vehicle is connected.</span>
+            </p>
+            <p>
+              <b>After connecting:</b> <br>
+              <div data-bind="visible: isEcoModeAvailable">
+                <span data-bind="css: {selected: !sleepTimerConnectedEnabled() }">Stay awake</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="checked: sleepTimerConnectedEnabled" />
+                  <div class="slider round"></div>
+                </label>
+                <span data-bind="css: {selected: sleepTimerConnectedEnabled }">Start timer</span><br/>
+              </div>
+              <input data-bind="enable: sleepTimerConnectedEnabled, value: sleepTimerConnectedMinutes" type="number" style="width: 6em;" placeholder="minutes" min="0" max="59">
+              :
+              <input data-bind="enable: sleepTimerConnectedEnabled, value: sleepTimerConnectedSeconds" type="number" style="width: 6em;" placeholder="seconds" min="0" max="59"><br>
+              <span class="small-text validMessage">The time it will take before pausing after a vehicle is connected but is not charging.</span>
+            </p>
+            <p>
+              <b>After disconnecting:</b> <br>
+              <div data-bind="visible: isEcoModeAvailable">
+                <span data-bind="css: {selected: !sleepTimerDisconnectedEnabled() }">Stay awake</span>
+                <label class="switch">
+                  <input type="checkbox" data-bind="checked: sleepTimerDisconnectedEnabled" />
+                  <div class="slider round"></div>
+                </label>
+                <span data-bind="css: {selected: sleepTimerDisconnectedEnabled }">Start timer</span><br/>
+              </div>
+              <input data-bind="enable: sleepTimerDisconnectedEnabled, value: sleepTimerDisconnectedMinutes" type="number" style="width: 6em;" placeholder="minutes" min="0" max="59">
+              :
+              <input data-bind="enable: sleepTimerDisconnectedEnabled, value: sleepTimerDisconnectedSeconds" type="number" style="width: 6em;" placeholder="seconds" min="0" max="59"><br>
+              <span class="small-text validMessage">The time it will take before pausing after a vehicle is disonnected.</span>
+            </p>
+            <button data-bind="click: sleepTimerGroup.save, text: (sleepTimerGroup.fetching() ? 'Saving' : (sleepTimerGroup.success() ? 'Saved' : 'Save')), disable: sleepTimerGroup.fetching">Save</button>
+          </div>
+
+          <div class="box380 right">
             <h2>Developer Mode</h2>
             <div>
               <b>Enabled: </b>
@@ -247,6 +339,8 @@
             </p>
             <p>
               <button data-bind="click: saveEmonCms, text: (saveEmonCmsFetching() ? 'Saving' : (saveEmonCmsSuccess() ? 'Saved' : 'Save')), disable: saveEmonCmsFetching">Save</button>
+            </p>
+            <p>
               <span data-bind="visible: config.emoncms_enabled"><b>&nbsp; Connected:&nbsp;<span data-bind="text: 1 === status.emoncms_connected() ? 'Yes' : 'No'"></span></b></span>
               <span data-bind="visible: config.emoncms_enabled() &amp;&amp; 1 === status.emoncms_connected()"><b>&nbsp; Successful posts:&nbsp;<span data-bind="text: status.packets_success"></span></b></span>
             </p>
@@ -356,9 +450,8 @@
             <p data-bind="visible: config.ohm_enabled">
               <strong>USA - California only</strong>
             </p>
-            <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/119419875" style="position:absolute;top:0;left:0;width:100%;height:100%;" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe></div><script src="https://player.vimeo.com/api/player.js"></script>
-              <p data-bind="visible: config.ohm_enabled">
-              Ohm Key can be obtained by logging in to OhmConnect, enter Settings and locate the link in "Open Source Projects"<br/>
+            <p data-bind="visible: config.ohm_enabled">
+              Ohm Key can be obtained by logging in to OhmConnect, enter Settings and locate the link in "Open Source Projects".<br/>
               Example: https://login.ohmconnect.com/verify-ohm-hour/OpnEoVse<br/>
               <b>Key: </b>OpnEoVse
             </p>
@@ -416,6 +509,12 @@
                 <span data-bind="visible: divertFeedType() === 'grid_ie'" class="small-text">Grid (+I/-E) MQTT topic to modulate charge rate based on <b>excess power</b></span>
               </div>
             </div>
+
+            <p data-bind="visible: advancedMode() &amp;&amp; config.divert_enabled() &amp;&amp; config.mqtt_enabled() &amp;&amp; divertFeedType() === 'grid_ie'">
+              <b>Required PV power ratio:</b><br>
+              <input data-bind="textInput: config.divert_PV_ratio" type="number" autocapitalize="none" hint="1.1" min="0.05" max="1.5" step="0.01"><br>
+              <span class="small-text">The fraction of PV current that suffices to start charging or increment current </span>
+            </p>
 
             <p data-bind="visible: advancedMode() &amp;&amp; config.divert_enabled() &amp;&amp; config.mqtt_enabled()">
               <b>Divert smoothing attack:</b><br>
@@ -926,6 +1025,12 @@
                 <td>$FS</td>
                 <td>Put EVSE to sleep</td>
               </tr>
+              <tr>
+                <td>$FF</td>
+                <td>Enable/disable feature (feature_id 0|1)<br>
+                    Front panel (B)utton, (D)iode check, G(F)I self-test, (G)round check,
+                    Stuck (R)elay check, (T)emp monitoring, (V)ent required</td>
+              </tr>
             </table>
           </div>
           <div class="box380 left">
@@ -934,6 +1039,10 @@
               <tr>
                 <th>Get</th>
                 <th>Description</th>
+              </tr>
+              <tr>
+                <td>$G0</td>
+                <td>Get EV connected state, not connected (0), connected (1), unknown (2)</td>
               </tr>
               <tr>
                 <td>$G3</td>
@@ -949,7 +1058,7 @@
               </tr>
               <tr>
                 <td>$GD</td>
-                <td>Get delay timer, starthr startmin endhr endmin</td>
+                <td>Get delay timer, start_hour start_min end_hour end_min</td>
               </tr>
               <tr>
                 <td>$GE</td>
@@ -972,12 +1081,8 @@
                 <td>Get Voltmeter Scale/Offset, scale offset</td>
               </tr>
               <tr>
-                <td>$GO</td>
-                <td>Get Overtemperature thresholds, ambient infrared</td>
-              </tr>
-              <tr>
                 <td>$GP</td>
-                <td>Get Temperatures, LCD mcp9808 infrared (all integers, Celsius * 10)</td>
+                <td>Get Temperatures, LCD MCP9808 infrared (integers, °C * 10)</td>
               </tr>
               <tr>
                 <td>$GS</td>
@@ -1010,7 +1115,7 @@
               </tr>
               <tr>
                 <td>$S1</td>
-                <td>Set RTC Year Month Day Hour Minute Second (all 2-digit max)</td>
+                <td>Set RTC, year month day hour minute second (all 2-digit max)</td>
               </tr>
               <tr>
                 <td>$S2</td>
@@ -1028,15 +1133,6 @@
                 <td>$SC</td>
                 <td>Set current capacity, integer</td>
               </tr>
-              <tr><td>$SD</td><td>Enable (1) / Disable (0) Diode self-check</td></tr>
-              <tr>
-                <td>$SF</td>
-                <td>Enable (1) / Disable (0) GFI self-check</td>
-              </tr>
-              <tr>
-                <td>$SG</td>
-                <td>Enable (1) / Disable (0) Ground check</td>
-              </tr>
               <tr>
                 <td>$SH</td>
                 <td>Set charge limit in kWh, integer</td>
@@ -1045,22 +1141,13 @@
                 <td>$SK</td>
                 <td>Set accumulated Wh, integer</td>
               </tr>
-              <tr><td>$SL</td><td>Set service level (1/2/A)</td></tr>
+              <tr>
+                  <td>$SL</td>
+                  <td>Set service level (1/2/A)</td>
+              </tr>
               <tr>
                 <td>$SM</td>
                 <td>Set Voltmeter Scale/Offset, scale offset</td>
-              </tr>
-              <tr>
-                <td>$SO</td>
-                <td>Set Overtemperature thresholds, ambient infrared</td>
-              </tr>
-              <tr>
-                <td>$SR</td>
-                <td>Enable (1) / Disable (0) Stuck-relay check</td>
-              </tr>
-              <tr>
-                <td>$SS</td>
-                <td>Enable (1) / Disable (0) GFI self-check</td>
               </tr>
               <tr>
                 <td>$ST</td>
@@ -1068,7 +1155,7 @@
               </tr>
               <tr>
                 <td>$SV</td>
-                <td>Enable (1) / Disable (0) vent required check</td>
+                <td>Set voltage for power calculations, millivolts</td>
               </tr>
             </table>
           </div>
